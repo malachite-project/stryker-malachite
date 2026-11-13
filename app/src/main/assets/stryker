@@ -1,0 +1,1 @@
+su -c "/data/data/com.zalexdev.stryker.devicefork/files/bash_exec"

@@ -1,0 +1,6 @@
+id=malachite_stryker_monitor
+name=malachite: Stryker + Wi-Fi monitor (TEST)
+version=1.0.2
+versionCode=3
+author=noamtu123
+description=TEST, one module: (1) loads our source-built gen4m driver (wlan+cfg80211+mac80211) EARLY at post-fs-data so wlan0 supports native monitor mode + injection; (2) installs the Stryker malachite fork (our iw monitor commands baked in; Stryker uses its own built-in capture/injection tools) and launches it from the Action button. Stryker turns Wi-Fi ON when opened (toggle in its Settings, default on). Keep Wi-Fi ON and SELinux enforcing. Fail-safe: restores the stock driver if ours fails to load. Replaces the separate driver + backend modules. Authorized security testing only.

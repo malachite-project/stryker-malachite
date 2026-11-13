@@ -1,0 +1,21 @@
+#!/sbin/sh
+#################
+# Stryker S21 Nexmon Backend - Magisk/KernelSU module installer stub
+#################
+umask 022
+OUTFD=$2
+ZIPFILE=$3
+ui_print() { echo "$1"; }
+
+mount /data 2>/dev/null
+
+if [ -f /data/adb/magisk/util_functions.sh ]; then
+  . /data/adb/magisk/util_functions.sh
+  install_module
+  exit 0
+fi
+
+# KernelSU / KernelSU-Next: install this module from the manager app, which
+# extracts the zip and runs customize.sh directly (this stub is not used).
+ui_print "- Install this module from the KernelSU-Next (or Magisk) manager app."
+exit 0

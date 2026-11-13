@@ -1,0 +1,5 @@
+# SELinux rules for the driver swap. Intentionally EMPTY until we see a real
+# denial - no blanket permissive. If swap.log shows "---- relevant AVC denials ----"
+# with a module_load / sys_module denial, add the exact, minimal matching rule
+# here (e.g.  allow <scontext> <tcontext>:system module_load;  for the types the
+# AVC names) and reship. Keep it to the named types only.

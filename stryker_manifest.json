@@ -1,0 +1,164 @@
+{
+  "manifest_version": 1,
+  "core": {
+    "version": "chroot-main",
+    "note": "Legacy Alpine chroot for app versions below 6. Do not repoint these keys: shipped builds < 6 read them directly and cannot be changed.",
+    "chroot64": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/chroot-main/chroot64.tar.gz",
+      "sha256": "2ad21f1445102913c52099bcb86ab380f9520c9e4d7771e6a951f634451068ac",
+      "size": 58918734
+    },
+    "chroot32": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/chroot-main/chroot32.tar.gz",
+      "sha256": "faa4b256819818360945d8fecc8f05f0f158a76e6a61feb8eff66308c32b3341",
+      "size": 140633600
+    },
+    "debian": {
+      "min_version_code": 600,
+      "version": "chroot-debian-trixie",
+      "note": "Debian trixie arm64, same rootfs the rootless VM boots. arm64-v8a only.",
+      "chroot64": {
+        "url": "https://github.com/zalexdev/strykerapp/releases/download/chroot-main/chroot64-debian.tar.gz",
+        "sha256": "bb27ba9f063dc8000eef947db36df1c0b96f1ec56edb36519a24b7f0ec9b030c",
+        "size": 237502035
+      }
+    },
+    "debian_v2": {
+      "min_version_code": 650,
+      "version": "chroot-debian-trixie-uml",
+      "note": "Debian trixie arm64, same tree as rootless-650. arm64-v8a only.",
+      "chroot64": {
+        "url": "https://github.com/zalexdev/strykerapp/releases/download/chroot-650/chroot64-debian.tar.gz",
+        "sha256": "c67549857b7741e5f2c809e701c6f5cfcacb971fe4a76ad166fecb7b2d4a9d74",
+        "size": 296674820
+      }
+    }
+  },
+  "rootless": {
+    "version": "rootless-main",
+    "note": "Local dev ships these inside the APK under assets/rootless/. This block is the OTA fallback; arm64-v8a only.",
+    "qemu": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/qemu-system-aarch64",
+      "sha256": "2a87f531371b3f8d45141d48632e0dbe2c3d968fbcb385ba105d671479fb8c99",
+      "size": 43800304
+    },
+    "kernel": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/Image",
+      "sha256": "cbe59a02e7ea979a150661032440c94e2c4db0b735af2416e11ae5cac15a58e4",
+      "size": 37605312
+    },
+    "initrd": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/initrd.img",
+      "sha256": "655f3ef013e7818e9ee874cf3b44a4c0bdc8a586c986cf237cb74c41862dfd02",
+      "size": 38301815
+    },
+    "libslirp": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/libslirp.so",
+      "sha256": "226372426fda32c9fccd8e831d0901a86bfff3c3e6f7a60336d6dde149f756c4",
+      "size": 1145496
+    },
+    "rootfs": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/rootfs.imgz",
+      "sha256": "f80c2b1e2433c3036aa745da2a5935cf5dd61b65b17bbeabae87b49bd68a12ef",
+      "size": 427974567
+    }
+  },
+  "app": {
+    "versionCode": 651,
+    "versionName": "6.5.1",
+    "url": "https://github.com/zalexdev/strykerapp/releases/download/6.5.1/Stryker.6.5.1.apk",
+    "sha256": "cdd218949cf1809fddfc5f4832a40f2d2f2f91d3f0117c0d85821ba5dbc90242",
+    "size": 96617041,
+    "mandatory": false,
+    "changelog": "Hotfix over 6.5. Updating from 6.0.x? After the update, Stryker installs a new Linux system (about 320 MB).\n\nCrashes\n- The terminal no longer crashes on launch. (#122, #126, #130)\n- Saved networks opens again on devices where it crashed every time. Saved passwords are kept.\n\nHandshake capture\n- When airodump-ng reports a handshake, Stryker now checks the file first. If the handshake isn't there, it keeps listening instead of ending the attack.\n- The capture is stopped cleanly, so the handshake actually reaches the file.\n- Stopping a mass handshake capture no longer loses the last captured frames.\n- \"Handshake captured\" is shown only when the file confirms it.\n\nCracking\n- A running crack stays visible after you leave the screen. You can stop it there or from the notification.\n- Cancel now actually stops aircrack-ng.\n- Wordlists with spaces or quotes in the path open correctly.\n- A failed run shows the real reason, such as a wordlist that won't open or a capture with no handshake, instead of \"Password not found\".\n- Captures with several networks no longer hang.\n- Deleting the last handshake no longer breaks the list. (#159)\n\nWi-Fi\n- Monitor mode can be turned off again.\n- RTL8187 adapters get more time to appear and are no longer reported as \"driver missing\". (#125)\n- Pixie Dust says where the WPS exchange stopped instead of listing missing values. (#128)\n\nNetwork scanner\n- The root LAN scan lists every host nmap finds, including hosts behind a router or VPN. If the MAC is unknown, that field is left blank. (#127)\n- On large networks, the first hosts are no longer dropped.\n- Hosts with similar addresses, like .1 and .10, are no longer treated as the same host.\n\nRootless (VM)\n- On slow devices, the VM keeps booting as long as the guest is making progress, instead of being stopped at 150 s. (#135)\n- If port 2222 is taken, a free port is picked, and QEMU left over from a previous run is stopped first.\n- VNC and other port forwards survive SSH reconnects.\n- The guest core is no longer redeployed and restarted in a loop. (#120)\n- UML: clearer error when there is no tmpfs for its memory. (#123)\n- Clearer error when Android's sandbox (seccomp) blocks passt.\n- Updated UML kernel, now more devices are supported and experimental fix for tp-link 722n v2/v3 is implemented\n\nSaved networks\n- Import skips broken rows instead of stopping at the first one.\n- Export via root keeps passwords with apostrophes intact."
+  },
+  "news": [
+    {
+      "id": 3,
+      "title": "Stryker 6.5 - UML engine & Wi-Fi in Linux",
+      "description": "A second rootless engine: User Mode Linux boots as a normal process, with no CPU emulation, and Stryker now probes the device and picks the engine itself. Wi-Fi can run inside Linux for adapters Android has no driver for, while root keeps running everything else. Also new: a Wordlists manager, a hash cracker, a live attack monitor, a USB chain that shows where an adapter stops, a customizable dashboard, diagnostics export and a Chinese translation. arm64-v8a only.",
+      "newsDate": "2026-10-03",
+      "newsUrl": "https://github.com/zalexdev/strykerapp/releases/tag/6.5",
+      "imageUrl": "",
+      "pinned": true,
+      "actionbutton1": true,
+      "actionbutton1text": "Open release",
+      "actionbutton1url": "https://github.com/zalexdev/strykerapp/releases/tag/6.5",
+      "actionbutton2": false,
+      "actionbutton2text": "",
+      "actionbutton2url": ""
+    },
+    {
+      "id": 2,
+      "title": "Stryker 6.0 - Rootless engine & Debian",
+      "description": "The full toolset now runs without root: Stryker boots an arm64 QEMU virtual machine and routes tools into the guest. The chroot moved from Alpine to Debian trixie, the same rootfs the VM boots. Also new: a root-free network scanner (mDNS, SSDP, NetBIOS, SNMP), Cameradar RTSP discovery, a reworked dashboard and VM settings. RouterScan has been removed. arm64-v8a only.",
+      "newsDate": "2026-08-09",
+      "newsUrl": "https://github.com/zalexdev/strykerapp/releases/tag/v6.0",
+      "imageUrl": "",
+      "pinned": false,
+      "actionbutton1": true,
+      "actionbutton1text": "Open release",
+      "actionbutton1url": "https://github.com/zalexdev/strykerapp/releases/tag/v6.0",
+      "actionbutton2": false,
+      "actionbutton2text": "",
+      "actionbutton2url": ""
+    },
+    {
+      "id": 1,
+      "title": "StrykerOSS is open source",
+      "description": "Released as free and open-source software. Visit the GitHub repository for source, issues and contributions.",
+      "newsDate": "2026-06-14",
+      "newsUrl": "https://github.com/zalexdev/strykerapp",
+      "imageUrl": "",
+      "pinned": true,
+      "actionbutton1": true,
+      "actionbutton1text": "Open GitHub",
+      "actionbutton1url": "https://github.com/zalexdev/strykerapp",
+      "actionbutton2": false,
+      "actionbutton2text": "",
+      "actionbutton2url": ""
+    }
+  ],
+  "notifications": [],
+  "rootless_v2": {
+    "min_version_code": 650,
+    "version": "rootless-650",
+    "note": "Kernel 7.2 from the UML port tree; one rootfs for both QEMU and UML. Guest is reached over SSH.",
+    "kernel_release": "7.2.0-rc4-g8897487c5223",
+    "qemu": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/qemu-system-aarch64",
+      "sha256": "2a87f531371b3f8d45141d48632e0dbe2c3d968fbcb385ba105d671479fb8c99",
+      "size": 43800304
+    },
+    "libslirp": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-main/libslirp.so",
+      "sha256": "226372426fda32c9fccd8e831d0901a86bfff3c3e6f7a60336d6dde149f756c4",
+      "size": 1145496
+    },
+    "kernel": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-650/Image",
+      "sha256": "80b5fd85c1280e11fcaee721bbad1781ebc91b0370ea49da6729fcecc8649d24",
+      "size": 28676104
+    },
+    "initrd": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-650/initrd.img",
+      "sha256": "30cc3d91d673de371946764678d534eab2e80669e393009915a3785e6e4f4017",
+      "size": 16308339
+    },
+    "rootfs": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-650/rootfs.imgz",
+      "sha256": "dfa844f8b9cebe121b60ecdb4da9c41ffd701430b2c9d0f6bdc90c66d2c26c82",
+      "size": 321664844
+    },
+    "uml_kernel": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-650/linux-uml",
+      "sha256": "25990d4a0cd8caa26bc1761be112f91790e7ec9695b58cdbe6ee00e08ad8e5c3",
+      "size": 21538600
+    },
+    "uml_stub": {
+      "url": "https://github.com/zalexdev/strykerapp/releases/download/rootless-650/stub_exe",
+      "sha256": "27273efe3344f5ea48e30fc0bd9c564f8ba56ad7e9e4662868c95ee1609b0f55",
+      "size": 1968
+    }
+  }
+}

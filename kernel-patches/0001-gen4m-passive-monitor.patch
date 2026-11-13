@@ -1,0 +1,27 @@
+diff --git a/connectivity/wlan/core/gen4m/Kbuild.6878 b/connectivity/wlan/core/gen4m/Kbuild.6878
+--- a/connectivity/wlan/core/gen4m/Kbuild.6878
++++ b/connectivity/wlan/core/gen4m/Kbuild.6878
+@@ -10,5 +10,6 @@ CONFIG_MTK_COMBO_WIFI_HIF := axi
+ MTK_ANDROID_WMT := y
+ MTK_ANDROID_EMI := y
+ MODULE_NAME := wlan_drv_gen4m_6878
++CONFIG_SNIFFER_RADIOTAP := y
+ 
+ include $(KO_CODE_PATH)/Kbuild.main
+diff --git a/connectivity/wlan/core/gen4m/os/linux/gl_init.c b/connectivity/wlan/core/gen4m/os/linux/gl_init.c
+--- a/connectivity/wlan/core/gen4m/os/linux/gl_init.c
++++ b/connectivity/wlan/core/gen4m/os/linux/gl_init.c
+@@ -3201,6 +3201,13 @@ netdev_tx_t wlanHardStartXmit(struct sk_buff *prSkb,
+ 	ASSERT(prDev);
+ 	ASSERT(prGlueInfo);
+ 
++#ifdef CFG_SUPPORT_SNIFFER_RADIOTAP
++	if (prDev->type == ARPHRD_IEEE80211_RADIOTAP) {
++		dev_kfree_skb(prSkb);
++		return NETDEV_TX_OK;
++	}
++#endif
++
+ 	prNetDevPrivate = (struct NETDEV_PRIVATE_GLUE_INFO *)
+ 			  netdev_priv(prDev);
+ 	ASSERT(prNetDevPrivate->prGlueInfo == prGlueInfo);

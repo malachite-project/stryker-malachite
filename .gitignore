@@ -1,0 +1,14 @@
+# build outputs & binaries (built from source / shipped via Releases)
+build/
+.gradle/
+*.ko
+*.apk
+*.zip
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+*.jks
+NUL

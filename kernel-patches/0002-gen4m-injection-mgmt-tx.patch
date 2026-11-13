@@ -1,0 +1,142 @@
+diff --git a/connectivity/wlan/core/gen4m/Kbuild.6878 b/connectivity/wlan/core/gen4m/Kbuild.6878
+index 61051a7..a1fabd0 100644
+--- a/connectivity/wlan/core/gen4m/Kbuild.6878
++++ b/connectivity/wlan/core/gen4m/Kbuild.6878
+@@ -10,5 +10,7 @@ CONFIG_MTK_COMBO_WIFI_HIF := axi
+ MTK_ANDROID_WMT := y
+ MTK_ANDROID_EMI := y
+ MODULE_NAME := wlan_drv_gen4m_6878
++# Malachite: native monitor mode (radiotap RX) + packet injection (mgmt-TX path)
++CONFIG_SNIFFER_RADIOTAP := y
+ 
+ include $(KO_CODE_PATH)/Kbuild.main
+diff --git a/connectivity/wlan/core/gen4m/os/linux/gl_cfg80211.c b/connectivity/wlan/core/gen4m/os/linux/gl_cfg80211.c
+index deb61ce..0879dbe 100644
+--- a/connectivity/wlan/core/gen4m/os/linux/gl_cfg80211.c
++++ b/connectivity/wlan/core/gen4m/os/linux/gl_cfg80211.c
+@@ -6006,6 +6006,62 @@ int mtk_uninit_sta_role(struct ADAPTER *prAdapter,
+ }
+ 
+ #ifdef CFG_SUPPORT_SNIFFER_RADIOTAP
++/* Malachite: monitor-mode packet injection.
++ * Transmit a raw, fully-formed 802.11 frame through the firmware management-TX
++ * path (the mechanism mtk_cfg80211_mgmt_tx uses), on the BSS the netdev still
++ * carries (the AIS BSS kept alive across the monitor switch). fgIsOffChannel is
++ * FALSE so the frame goes out on the firmware's current (monitor) channel.
++ * Returns 0 on enqueue, negative on error; the caller owns/frees the skb.
++ */
++int wlanMonitorInject(struct GLUE_INFO *prGlueInfo,
++		struct net_device *ndev, const uint8_t *buf, uint32_t u4Len)
++{
++	struct MSG_MGMT_TX_REQUEST *prMsgTxReq = NULL;
++	struct MSDU_INFO *prMgmtFrame = NULL;
++	uint8_t *pucFrameBuf = NULL;
++	uint8_t ucBssIndex;
++
++	if (prGlueInfo == NULL || ndev == NULL || buf == NULL || u4Len == 0)
++		return -EINVAL;
++
++	ucBssIndex = wlanGetBssIdx(ndev);
++	if (!IS_BSS_INDEX_VALID(ucBssIndex)) {
++		DBGLOG(REQ, WARN, "inject: no valid BSS, drop\n");
++		return -EINVAL;
++	}
++
++	prMsgTxReq = cnmMemAlloc(prGlueInfo->prAdapter, RAM_TYPE_MSG,
++			sizeof(struct MSG_MGMT_TX_REQUEST));
++	if (prMsgTxReq == NULL)
++		return -ENOMEM;
++
++	prMgmtFrame = cnmMgtPktAlloc(prGlueInfo->prAdapter,
++			(int32_t)(u4Len + MAC_TX_RESERVED_FIELD));
++	if (prMgmtFrame == NULL) {
++		cnmMemFree(prGlueInfo->prAdapter, prMsgTxReq);
++		return -ENOMEM;
++	}
++
++	prMsgTxReq->rMsgHdr.eMsgId = MID_MNY_AIS_MGMT_TX;
++	prMsgTxReq->prMgmtMsduInfo = prMgmtFrame;
++	prMsgTxReq->ucBssIdx = ucBssIndex;
++	prMsgTxReq->u8Cookie = 0;
++	prMsgTxReq->fgNoneCckRate = TRUE;
++	prMsgTxReq->fgIsOffChannel = FALSE;
++	prMsgTxReq->fgIsWaitRsp = FALSE;
++	prMsgTxReq->u4Duration = 0;
++
++	pucFrameBuf = (uint8_t *) ((unsigned long) prMgmtFrame->prPacket
++			+ MAC_TX_RESERVED_FIELD);
++	kalMemCopy(pucFrameBuf, buf, u4Len);
++	prMgmtFrame->u2FrameLength = u4Len;
++	prMgmtFrame->ucBssIndex = ucBssIndex;
++
++	mboxSendMsg(prGlueInfo->prAdapter, MBOX_ID_0,
++			(struct MSG_HDR *) prMsgTxReq, MSG_SEND_METHOD_BUF);
++	return 0;
++}
++
+ void mtk_init_monitor_role(struct wiphy *wiphy,
+ 		      struct net_device *ndev)
+ {
+@@ -6787,9 +6843,13 @@ int mtk_cfg_change_iface(struct wiphy *wiphy,
+ 		}
+ #ifdef CFG_SUPPORT_SNIFFER_RADIOTAP
+ 	} else if (type == NL80211_IFTYPE_MONITOR) {
+-		if (ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_STATION)
+-			mtk_uninit_sta_role(prAdapter, ndev);
+-		else if (ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
++		/* Malachite injection: keep the AIS STA role/BSS allocated so
++		 * monitor-mode TX (wlanMonitorInject) has a valid BSS context.
++		 * Do NOT aisFsmUninit the STA role; only tear down AP/P2P. The
++		 * netdev keeps its AIS ucBssIdx and RX monitor still works via
++		 * fgIsEnableMon.
++		 */
++		if (ndev->ieee80211_ptr->iftype == NL80211_IFTYPE_AP)
+ 			mtk_uninit_ap_role(prGlueInfo, ndev);
+ 
+ 		mtk_init_monitor_role(wiphy, ndev);
+diff --git a/connectivity/wlan/core/gen4m/os/linux/gl_init.c b/connectivity/wlan/core/gen4m/os/linux/gl_init.c
+index 1c52a24..0b436e0 100644
+--- a/connectivity/wlan/core/gen4m/os/linux/gl_init.c
++++ b/connectivity/wlan/core/gen4m/os/linux/gl_init.c
+@@ -3201,6 +3201,28 @@ netdev_tx_t wlanHardStartXmit(struct sk_buff *prSkb,
+ 	ASSERT(prDev);
+ 	ASSERT(prGlueInfo);
+ 
++#ifdef CFG_SUPPORT_SNIFFER_RADIOTAP
++	/* Malachite: monitor-mode packet injection. The stack hands us a
++	 * radiotap header followed by a fully-formed 802.11 frame. Strip the
++	 * radiotap header and inject the raw 802.11 frame via the firmware
++	 * management-TX path (wlanMonitorInject). We always consume the skb.
++	 */
++	if (prGlueInfo->fgIsEnableMon) {
++		uint16_t u2RtapLen;
++
++		if (prSkb->len >= 4) {
++			u2RtapLen = le16_to_cpu(*(uint16_t *)(prSkb->data + 2));
++			if (u2RtapLen < prSkb->len) {
++				skb_pull(prSkb, u2RtapLen);
++				wlanMonitorInject(prGlueInfo, prDev,
++					prSkb->data, prSkb->len);
++			}
++		}
++		dev_kfree_skb(prSkb);
++		return NETDEV_TX_OK;
++	}
++#endif /* CFG_SUPPORT_SNIFFER_RADIOTAP */
++
+ 	prNetDevPrivate = (struct NETDEV_PRIVATE_GLUE_INFO *)
+ 			  netdev_priv(prDev);
+ 	ASSERT(prNetDevPrivate->prGlueInfo == prGlueInfo);
+diff --git a/connectivity/wlan/core/gen4m/os/linux/include/gl_cfg80211.h b/connectivity/wlan/core/gen4m/os/linux/include/gl_cfg80211.h
+index d80948c..00817b0 100644
+--- a/connectivity/wlan/core/gen4m/os/linux/include/gl_cfg80211.h
++++ b/connectivity/wlan/core/gen4m/os/linux/include/gl_cfg80211.h
+@@ -785,6 +785,8 @@ int mtk_cfg80211_update_ft_ies(struct wiphy *wiphy, struct net_device *dev,
+ #ifdef CFG_SUPPORT_SNIFFER_RADIOTAP
+ int mtk_cfg80211_set_monitor_channel(struct wiphy *wiphy,
+ 				struct cfg80211_chan_def *chandef);
++int wlanMonitorInject(struct GLUE_INFO *prGlueInfo,
++		struct net_device *ndev, const uint8_t *buf, uint32_t u4Len);
+ #endif
+ 
+ #if CFG_SUPPORT_WPA3
