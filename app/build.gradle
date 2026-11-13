@@ -80,6 +80,20 @@ android {
                 "**/libumusb.so",
                 "**/libbash.so",
         ]
+
+        // malachite runs rooted (KSU + chroot), never the rootless UML/QEMU VM,
+        // so its native engine (~65 MB) is dead weight. Drop it from the APK.
+        // These are exec'd binaries, not dlopen'd; the engine/ code only probes
+        // them with File.exists()/canExecute() and degrades gracefully when absent.
+        jniLibs.excludes += [
+                "**/libqemu.so",
+                "**/libuml.so",
+                "**/libstub.so",
+                "**/libumnet.so",
+                "**/libpasst.so",
+                "**/libumusb.so",
+                "**/libslirp.so",
+        ]
     }
 
     aaptOptions {
