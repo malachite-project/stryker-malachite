@@ -1580,8 +1580,12 @@ public class Core {
     }
 
     public void wpsDisableWifiIfEnabled(){
-        if (isRootless()) return;
-        if (isPixieIfaceDown()) customCommand("svc wifi disable");
+        // MT6878/gen4m (malachite): do NOT `svc wifi disable` before WPS/pixie.
+        // On this FullMAC driver, turning Wi-Fi off DELETES the wlan0 netdev, so
+        // wpa_supplicant/pixie then fail with "No such device" and every capture
+        // that runs afterwards (airodump HS) sees a dead adapter until a reboot.
+        // pixie.py evicts the competing supplicant itself (radio_supplicant_killed),
+        // so the live managed wlan0 is handed over without toggling the Wi-Fi switch.
     }
 
     public static boolean contains(ArrayList<String> list, String item){
